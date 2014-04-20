@@ -138,6 +138,14 @@ var MathLib = (function() {
         },
         combination: function(n, k) {
             return this.factorial(n) / (this.factorial(k) * this.factorial(n - k));
+        },
+        sph2cart: function(vect) {
+            //r, theta, phi
+            var z = vect.x * Math.sin(vect.z);
+            var rcoselev = vect.x * Math.cos(vect.z);
+            var x = rcoselev * Math.cos(vect.y);
+            var y = rcoselev * Math.sin(vect.y);
+            return new THREE.Vector3(x, y, z);
         }
     };
 })();

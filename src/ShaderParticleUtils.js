@@ -297,5 +297,5 @@ SPE.utils = {
         });
 
         return str;
-    }
+    } 
 };

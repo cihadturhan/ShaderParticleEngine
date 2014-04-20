@@ -20,7 +20,12 @@ SPE.Emitter = function( options ) {
 
 
     that.particleCount          = typeof options.particleCount === 'number' ? options.particleCount : 100;
-    that.type                   = (options.type === 'cube' || options.type === 'sphere' || options.type === 'disk') ? options.type : 'cube';
+    that.type                   = (options.type === 'cube' || options.type === 'sphere' || options.type === 'disk' || options.type === 'function') ? options.type : 'cube';
+    
+    that.positionGrid           = options.positionGrid?options.positionGrid:[];
+    
+    that.func                   = options.func? options.func : function(){};
+    that.increment              = options.increment? options.increment : 0.3;
 
     that.position               = options.position instanceof THREE.Vector3 ? options.position : new THREE.Vector3();
     that.positionSpread         = options.positionSpread instanceof THREE.Vector3 ? options.positionSpread : new THREE.Vector3();
@@ -175,6 +180,9 @@ SPE.Emitter.prototype = {
         else if( type === 'disk') {
             that._randomizeExistingVector3OnDisk( particlePosition, that.position, that.radius, that.radiusSpread, that.radiusScale, that.radiusSpreadClamp );
             that._randomizeExistingVelocityVector3OnSphere( particleVelocity, that.position, particlePosition, that.speed, that.speedSpread );
+        }else if (type === 'function'){
+            that._randomizeExistingVectorWithFunction(particlePosition, that.position)
+            that._randomizeExistingVelocityVector3OnSphere( particleVelocity, that.position, particlePosition, that.speed, that.speedSpread );
         }
     },
 
@@ -250,6 +258,8 @@ SPE.Emitter.prototype = {
                 that._resetParticle( i );
             }
         }
+        
+        
 
         that.particleIndex += ppsdt;
 

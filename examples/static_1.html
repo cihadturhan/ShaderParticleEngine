@@ -1,5 +1,6 @@
 <html>
     <head>
+        <meta charset='UTF-8'/>
         <title>Basic Shader Particles</title>
         <link rel="stylesheet" type="text/css" href="./css/style.css">
     </head>
@@ -9,26 +10,35 @@
         <!-- THREE.min.js r60 and FPS stats -->
         <script type="text/javascript" src="./js/THREE-r65.min.js"></script>
         <script type="text/javascript" src="./js/Stats.min.js"></script>
+        <script type="text/javascript" src="js/OrbitControls.js"></script>
 
         <!-- ShaderParticles -->
-        <script type="text/javascript" src="../build/ShaderParticles.min.js"></script>
+        <script type="text/javascript" src="js/MathLib/MathLib.js"></script>
+        <script type="text/javascript" src="js/MathLib/Complex.js"></script>
+        <script type="text/javascript" src="js/MathLib/Laguerre.js"></script>
+        <script type="text/javascript" src="js/MathLib/AssocLegendre.js"></script>
+        <script type="text/javascript" src="js/MathLib/SphericalHarmonic.js"></script>
+
+        <script type="text/javascript" src="../src/ShaderParticleUtils.js"></script>
+        <script type="text/javascript" src="../src/ShaderParticleGroup.js"></script>
+        <script type="text/javascript" src="../src/ShaderParticleEmitter.js"></script>
 
 
         <script type="text/javascript">
 
             function Ψ(n, l, m) {
-                var a0 = 1; // bohr radius
+                var a0 = 50; // bohr radius
 
                 this.n = n;
                 this.l = l;
                 this.m = m;
                 this.const = Math.sqrt(
-                        (2 / n * a0) * (2 / n * a0) * (2 / n * a0) *
+                        (2 / n / a0) * (2 / n / a0) * (2 / n / a0) *
                         MathLib.factorial(n - l - 1) /
-                        (2 * n * MathLib.factorial(n + l))
+                        (2 * this.n * MathLib.factorial(n + l))
                         );
                 var opts = {
-                    lag: new Laguerre(n - l - 1, 2 * l + 1),
+                    lag: new Laguerre(this.n - l - 1, 2 * l + 1),
                     shr: new SphericalHarmonic(l, m),
                     eval: function(r, θ, φ) {
                         var ρ = 2 * r / (this.n * a0);
@@ -41,25 +51,30 @@
                 return this;
             }
 
-            function dP(n, l, m) {
-                var opts = {
-                    psi: new Ψ(n, l, m),
-                    eval: function(r, θ, φ) {
-                        return r * r * sin(θ) * Ψ.eval(r, θ, φ).length();
-                    }
-                };
+
+            function randBtw(a, b) {
+                return (b - a) * Math.random() + a;
             }
+
+            var rmin = 0,
+                    rmax = 2000,
+                    incr = 50;
+            var tmin = 0,
+                    tmax = 2 * Math.PI + 0.001,
+                    tincr = Math.PI / 40;
+
 
 
             // variables used in init()
             var scene, camera, renderer, stats, stats2, clock;
             // Used in initParticles()
-            var emitter, particleGroup, numEmitters = 4;
+            var emitter, particleGroup, numEmitters = 1;
             // Setup the scene
             function init() {
                 scene = new THREE.Scene();
-                camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 10000);
-                camera.position.z = 200;
+                camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 100000);
+
+
                 camera.lookAt(scene.position);
                 renderer = new THREE.WebGLRenderer();
                 renderer.setSize(window.innerWidth, window.innerHeight);
@@ -70,6 +85,11 @@
                 stats.domElement.style.top = '0';
                 document.body.appendChild(renderer.domElement);
                 document.body.appendChild(stats.domElement);
+
+                controls = new THREE.OrbitControls(camera, renderer.domElement);
+                camera.position.z = rmax*1.5;
+                controls = new THREE.OrbitControls(camera);
+                controls.addEventListener('change', render);
             }
 
             function getRandomNumber(base) {
@@ -85,28 +105,34 @@
                 for (var i = 0; i < numEmitters; ++i) {
                     emitter = new SPE.Emitter({
                         type: 'function',
-                        function: (new Ψ(1, 00)).eval, //r,theta, phi
-                        radius: 5 + i,
-                        radiusScale: new THREE.Vector3(1, 1 - (i / numEmitters), 1),
-                        position: new THREE.Vector3(0, 0, 0),
-                        colorStart: (new THREE.Color()).setRGB(
-                                getRandomNumber(1),
-                                getRandomNumber(1),
-                                getRandomNumber(1)
-                                ),
-                        sizeStart: 1.75,
-                        particleCount: 800,
+                        func: new Ψ(10, 5, 1), //n,l,m
+                        positionGrid: (function() {
+
+                            var grid = [];
+
+                            for (var r = rmin; r < rmax; r += incr) {
+                                for (var theta = tmin; theta < tmax; theta += tincr) {
+                                    for (var phi = tmin; phi < tmax; phi += tincr) {
+                                        grid.push(new THREE.Vector3(r, theta, phi));
+                                    }
+                                }
+                            }
+                            return grid;
+                        })(),
+                        increment: incr,
+                        size: 1,
+                        radius: 1,
+                        particleCount: Math.floor((rmax - rmin) / incr) * Math.floor((tmax - tmin) / tincr) * Math.floor((tmax - tmin) / tincr),
                         opacityStart: 1,
                         isStatic: 1
                     });
+                    emitter.tincr = tincr;
                     particleGroup.addEmitter(emitter);
                 }
 
                 scene.add(particleGroup.mesh);
                 document.querySelector('.numParticles').textContent = 'Total particles: ' + (emitter.particleCount * numEmitters);
             }
-
-
 
             function animate() {
                 requestAnimationFrame(animate);
@@ -117,17 +143,17 @@
 
 
             function updateCamera() {
-                var now = Date.now() * 0.0005;
-                camera.position.x = Math.sin(now) * 200;
-                camera.position.y = Math.cos(Date.now() * 0.0004) * 200;
-                camera.position.z = Math.cos(Date.now() * 0.001) * 500;
+                var now = Date.now() * 0.00005;
+                camera.position.x = Math.sin(now) * rmax * 3 / 2;
+                //camera.position.y = Math.cos(Date.now() * 0.0004) * 1;
+                camera.position.z = Math.cos(now) * rmax * 3 / 2;
                 camera.lookAt(scene.position);
             }
 
 
             function render(dt) {
+                var now = Date.now() * 0.00005;
                 particleGroup.tick(dt);
-                updateCamera();
                 renderer.render(scene, camera);
             }
 
@@ -139,8 +165,11 @@
                 camera.updateProjectionMatrix();
                 renderer.setSize(w, h);
             }, false);
+
             init();
             initParticles();
+
+
             setTimeout(animate, 0);
 
         </script>
