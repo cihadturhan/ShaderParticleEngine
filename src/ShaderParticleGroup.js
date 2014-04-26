@@ -136,26 +136,122 @@ SPE.Group.prototype = {
 
         emitter.particleIndex = parseFloat(start);
 
-        var p, pIncr, dP, p0, p1, rp, pmax = 0, numPts = 0,
-                d, rd, currPts, intVal, floatVal, subData, incr = emitter.increment, tincr = emitter.tincr;
+        var p, pIncr, dP, p0, p1, rp, pmax = 0, numPts = 0, ptot = 0,
+                d, rd, currPts, intVal, floatVal, subData, incr = emitter.increment, tincr = emitter.tincr,
+                i2 = 0, j2 = 0,
+                angpMax = -Infinity, radpMax = -Infinity,
+                angP = [],
+                radP = [];
 
         console.log(+new Date());
-        var prob = emitter.positionGrid.reduce(function(p, c) {
-            p0 = emitter.func.eval(c.x, c.y, c.z).length();
-            p1 = emitter.func.eval(c.x + incr, c.y + incr, c.z + incr).length();
-            dP = (p0 + p1)*incr*incr*incr;
 
-            if (p0 > pmax)
-                pmax = p0;
+        for (var i = 0; i < radial.length; i++) {
+            radP[i] = emitter.func.evalRad(radial[i]);
+            if (radP[i] > radpMax) {
+                radpMax = radP[i];
+            }
+        }
 
-            p += dP;
-            return p;
-        }, 0);
-        //pmax = 1.4239710874439595e-9 ;
+        for (var j = 0; j < angular.length; j++) {
+            angP[j] = emitter.func.evalAng(angular[j].x, angular[j].y);
+            if (angP[j] > angpMax) {
+                angpMax = angP[j];
+            }
+        }
 
-        console.log(prob);
+
+        pmax = angpMax * radpMax;
         console.log(+new Date());
-        // Create the values
+
+        for (var i = 0; i < radial.length; i++) {
+            for (var j = 0; j < angular.length; j++) {
+                ptot += radP[i] * angP[j];
+            }
+        }
+        console.log(ptot);
+        var dpArr = [], rl = radial.length, al = angular.length;
+
+        for (var i = 0; i < rl; i++) {
+            for (var j = 0; j < al; j++) {
+                i == rl ? (i2 = rl) : i2 = i + 1;
+                j == al ? (j2 = al) : j2 = j + 1;
+                dpArr[i * rl + j] = (radP[i] * angP[j] + radP[i2] * angP[j2]) / ptot;
+
+
+                currPts = dP * emitter.particleCount;
+
+                intVal = Math.floor(currPts);
+                floatVal = currPts % 1;
+
+                currPts = intVal + (floatVal > Math.random() ? 1 : 0);
+
+
+                for (var k = 0; k < currPts; i++) {
+                    rp = new THREE.Vector3(randBtw(p.x, pIncr.x), randBtw(p.y, pIncr.y), randBtw(p.z, pIncr.z));
+
+                    vertices[numPts] = MathLib.sph2cart(rp);
+                    velocity[numPts] = new THREE.Vector3();
+
+                    alive[numPts] = (1.0);
+
+                    age[numPts] = 0.0;
+
+                    acceleration[numPts] = that._randomVector3(emitter.acceleration, emitter.accelerationSpread);
+
+                    size[numPts] = new THREE.Vector3(
+                            Math.abs(that._randomFloat(emitter.sizeStart, emitter.sizeStartSpread)),
+                            Math.abs(that._randomFloat(emitter.sizeMiddle, emitter.sizeMiddleSpread)),
+                            Math.abs(that._randomFloat(emitter.sizeEnd, emitter.sizeEndSpread))
+                            );
+
+                    angle[numPts] = new THREE.Vector4(
+                            that._randomFloat(emitter.angleStart, emitter.angleStartSpread),
+                            that._randomFloat(emitter.angleMiddle, emitter.angleMiddleSpread),
+                            that._randomFloat(emitter.angleEnd, emitter.angleEndSpread),
+                            emitter.angleAlignVelocity ? 1.0 : 0.0
+                            );
+
+                    var color = new THREE.Color();
+                    rd = MathLib.sph2cart(p).distanceTo(vertices[numPts]);
+                    var val = Math.max(Math.min(0.8, 0.8 * ((p1 - p0) * rd / d + p0) / pmax), 0);
+
+                    color.setHSL(0.8 - val, 0.8, 0.3 + val / 2);
+
+                    colorStart[numPts] = that._randomColor(color, emitter.colorStartSpread);
+                    colorMiddle[numPts] = that._randomColor(color, emitter.colorMiddleSpread);
+                    colorEnd[numPts] = that._randomColor(color, emitter.colorEndSpread);
+
+                    opacity[numPts] = new THREE.Vector3(
+                            Math.abs(that._randomFloat(emitter.opacityStart, emitter.opacityStartSpread)),
+                            Math.abs(that._randomFloat(emitter.opacityMiddle, emitter.opacityMiddleSpread)),
+                            Math.abs(that._randomFloat(emitter.opacityEnd, emitter.opacityEndSpread))
+                            );
+                    numPts++;
+
+                }
+
+
+            }
+        }
+
+        console.log(dpArr);
+        console.log(+new Date());
+        return;
+
+        /*console.log(+new Date());
+         var prob = emitter.positionGrid.reduce(function(p, c) {
+         p0 = emitter.func.eval(c.x, c.y, c.z);
+         p1 = emitter.func.eval(c.x + incr, c.y + incr, c.z + incr);
+         dP = (p0 + p1) * incr * incr * incr;
+         
+         if (p0 > pmax)
+         pmax = p0;
+         
+         p += dP;
+         return p;
+         }, 0);*/
+
+
         for (var i = start; i < end; ++i) {
 
             p = emitter.positionGrid[i - start];
@@ -163,11 +259,11 @@ SPE.Group.prototype = {
 
             d = MathLib.sph2cart(p).distanceTo(MathLib.sph2cart(pIncr));
 
-            p0 = emitter.func.eval(p.x, p.y, p.z).length();
-            p1 = emitter.func.eval(pIncr.x, pIncr.y, pIncr.z).length();
+            p0 = emitter.func.eval(p.x, p.y, p.z);
+            p1 = emitter.func.eval(pIncr.x, pIncr.y, pIncr.z);
 
 
-            dP = (p0 + p1)*incr*incr*incr / prob;
+            dP = (p0 + p1) * incr * incr * incr / ptot;
 
             currPts = dP * emitter.particleCount;
 
@@ -177,7 +273,7 @@ SPE.Group.prototype = {
 
             currPts = intVal + (floatVal > Math.random() ? 1 : 0);
 
-            for (var j = 0; j < currPts; j++) {
+            for (var j = 0; i < currPts; i++) {
                 rp = new THREE.Vector3(randBtw(p.x, pIncr.x), randBtw(p.y, pIncr.y), randBtw(p.z, pIncr.z));
 
                 vertices[numPts] = MathLib.sph2cart(rp);
@@ -224,7 +320,7 @@ SPE.Group.prototype = {
             if (i % 100)
                 setCount(numPts);
         }
-        
+
         console.log(+new Date());
 
         // Cache properties on the emitter so we can access

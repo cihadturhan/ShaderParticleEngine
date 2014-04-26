@@ -38,13 +38,17 @@
                         (2 * this.n * MathLib.factorial(n + l))
                         );
                 var opts = {
-                    lag: new Laguerre(this.n - l - 1, 2 * l + 1),
+                    lag: new Laguerre(n - l - 1, 2 * l + 1),
                     shr: new SphericalHarmonic(l, m),
                     eval: function(r, θ, φ) {
+                        return this.const * this.evalRad(r) * this.evalAng(θ, φ);
+                    },
+                    evalRad: function(r) {
                         var ρ = 2 * r / (this.n * a0);
-                        var radial = Math.exp(-ρ / 2) * Math.pow(ρ, this.l) * this.lag.eval(ρ);
-                        var angular = this.shr.eval(θ, φ);
-                        return angular.times(radial * this.const);
+                        return Math.abs(Math.exp(-ρ / 2) * Math.pow(ρ, this.l) * this.lag.eval(ρ));
+                    },
+                    evalAng: function(θ, φ) {
+                        return this.shr.eval(θ, φ).length();
                     }
                 };
                 extend(this, opts);
@@ -58,10 +62,30 @@
 
             var rmin = 0,
                     rmax = 2000,
-                    incr = 100;
+                    incr = 50;
             var tmin = 0,
-                    tmax = 2 * Math.PI ,
-                    tincr = Math.PI / 30;
+                    tmax = 2 * Math.PI,
+                    tincr = Math.PI / 20;
+
+            var angular = (function() {
+                var data = [];
+                for (var theta = tmin; theta < tmax; theta += tincr) {
+                    for (var phi = tmin; phi < tmax; phi += tincr) {
+                        data.push(new THREE.Vector2(theta, phi));
+                    }
+                }
+                return data;
+            })();
+
+            var radial = (function() {
+
+                var data = [];
+
+                for (var r = rmin; r < rmax; r += incr) {
+                    data.push(r);
+                }
+                return data;
+            })();
 
 
 
@@ -113,7 +137,7 @@
                         sizeStart: 25,
                         radius: 10,
                         particleCount: Math.floor((rmax - rmin) / incr) * Math.floor((tmax - tmin) / tincr) * Math.floor((tmax - tmin) / tincr),
-                        colorStartSpread:  new THREE.Vector3(1,1,1),
+                        colorStartSpread: new THREE.Vector3(1, 1, 1),
                         opacityStart: 1,
                         opacityEnd: 0,
                         isStatic: 1
@@ -149,9 +173,7 @@
 
             SPE.ready(function() {
                 init();
-                console.log(+new Date());
                 initParticles();
-                console.log(+new Date());
                 animate();
 
                 window.addEventListener('resize', function() {
@@ -162,7 +184,8 @@
                     renderer.setSize(w, h);
                 }, false);
 
-            });
+            }
+            );
 
 
         </script>
