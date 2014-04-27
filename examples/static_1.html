@@ -5,6 +5,14 @@
         <link rel="stylesheet" type="text/css" href="./css/style.css">
     </head>
     <body>
+        <select id="n">
+            <option value="0">0</option>
+            <option value="1">1</option>
+            <option value="2">2</option>
+            <option value="3">3</option>
+            <option value="4">4</option>
+        </select>
+        
         <p class="numParticles"></p>
 
         <!-- THREE.min.js r60 and FPS stats -->
@@ -60,12 +68,16 @@
                 return (b - a) * Math.random() + a;
             }
 
+            function randBtwVect(v1, v2) {
+                return new THREE.Vector3(randBtw(v1.x, v2.x), randBtw(v1.y, v2.y), randBtw(v1.z, v2.z));
+            }
+
             var rmin = 0,
                     rmax = 2000,
                     incr = 50;
             var tmin = 0,
                     tmax = 2 * Math.PI,
-                    tincr = Math.PI / 20;
+                    tincr = Math.PI/30;
 
             var angular = (function() {
                 var data = [];
@@ -119,7 +131,7 @@
                 for (var i = 0; i < numEmitters; ++i) {
                     emitter = new SPE.Emitter({
                         type: 'function',
-                        func: new Ψ(4, 2, 1), //n,l,m
+                        func: new Ψ(6, 5, 1), //n,l,m
                         positionGrid: (function() {
 
                             var grid = [];
@@ -134,7 +146,7 @@
                             return grid;
                         })(),
                         increment: incr,
-                        sizeStart: 25,
+                        sizeStart: 20,
                         radius: 10,
                         particleCount: Math.floor((rmax - rmin) / incr) * Math.floor((tmax - tmin) / tincr) * Math.floor((tmax - tmin) / tincr),
                         colorStartSpread: new THREE.Vector3(1, 1, 1),
@@ -150,7 +162,8 @@
 
                 controls = new THREE.OrbitControls(camera, renderer.domElement);
                 camera.position.z = rmax * 1.5;
-                controls = new THREE.OrbitControls(camera);
+                camera.position.y = 0;
+                camera.position.x = 0;
                 controls.addEventListener('change', render);
             }
 
@@ -183,7 +196,12 @@
                     camera.updateProjectionMatrix();
                     renderer.setSize(w, h);
                 }, false);
-
+                
+                document.getElementById('n').addEventListener('change', function(e){
+                    console.log(emitter.func.n);
+                    emitter.func.n = +this.value;
+                });
+                
             }
             );
 
